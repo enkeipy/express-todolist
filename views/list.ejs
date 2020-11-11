@@ -1,25 +1,22 @@
-<%- include('header') -%>
-
-<div class="box" id='heading'>
-  <h1> <%= listTitle %> </h1>
+<%- include('partials/header') -%>
+<div>
+  <h1>Hi, <%= listTitle %>!</h1>
+  <h2>Here some work To Do:</h2>
 </div>
-
-<div class="box">
-
+<div>
   <% newListItems.forEach((item) => { %>
-  <form class="" action="/delete" method="post">
-    <div class="item">
+  <form action="/delete" method="post">
+    <div>
       <input type="checkbox" name="checkbox" value="<%= item._id %>" onChange="this.form.submit()">
       <p><%= item.name %></p>
     </div>
     <input type="hidden" name="listName" value="<%= listTitle %>"></input>
   </form>
   <% }); %>
-
-  <form class="item" action="/" method="post">
+  <form method="post">
     <input type="text" name="newItem" placeholder="New Item" autocomplete="off">
     <button type="submit" name="list" value='<%= listTitle %>'>+</button>
   </form>
+  <a href='/logout'><button type='button'>Logout</button></a>
 </div>
-
-<%- include('footer') -%>
+<%- include('partials/footer') -%>

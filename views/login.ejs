@@ -1,0 +1,28 @@
+<%- include('partials/header') -%>
+<div>
+  <h1>Welcome!</h1>
+  <h2>There no styles right know, check em soon!</h2>
+  <h3>Please, enter your username and password</h3>
+  <div>
+    <div>
+      <div>
+        <div>
+          <!-- Makes POST request to /login route -->
+          <form action="/login" method="POST">
+            <div>
+              <label for="username">Username</label>
+              <input type="text" name="username">
+            </div>
+            <div>
+              <label for="password">Password</label>
+              <input type="password" name="password">
+            </div>
+            <button type="submit">Login</button>
+            <a href='/register'><button type='button'>Register page</button></a>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('partials/footer') -%>

@@ -1,24 +1,68 @@
 //jshint esversion:6
-
+require('dotenv').config();
 const express = require("express");
 const bodyParser = require("body-parser");
+const ejs = require('ejs');
+const session = require('express-session');
 const mongoose = require('mongoose');
-const _ = require('lodash');
+const findOrCreate = require('mongoose-findorcreate');
+const passport = require('passport');
+const passportLocalMongoose = require('passport-local-mongoose');
 
 const app = express();
 
 app.set('view engine', 'ejs');
-app.use(bodyParser.urlencoded({extended: true}));
+
+app.use(bodyParser.urlencoded({
+  extended: true
+}));
+
 app.use(express.static("public"));
 
-mongoose.connect('mongodb+srv://admin-nikita:455320@cluster0.xwkg1.mongodb.net/todolistDB',
-                 {useNewUrlParser: true});
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+mongoose.connect(process.env.DATABASE, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+});
+mongoose.set('useFindAndModify', false);
+mongoose.set('useCreateIndex', true);
+
+const userSchema = new mongoose.Schema({
+  username: String,
+  password: String,
+  list: String
+});
+
+userSchema.plugin(passportLocalMongoose);
+userSchema.plugin(findOrCreate);
+
+const User = new mongoose.model('User', userSchema);
+
+passport.use(User.createStrategy());
+
+passport.serializeUser(function(user, done) {
+  done(null, user.id);
+});
+
+passport.deserializeUser(function(id, done) {
+  User.findById(id, function(err, user) {
+    done(err, user);
+  });
+});
 
 const itemsSchema = {
   name: String
 };
 
-const Item = mongoose.model('Item',itemsSchema);
+const Item = mongoose.model('Item', itemsSchema);
 
 const item1 = new Item({
   name: 'Welcome to your todolist'
@@ -42,100 +86,131 @@ const listSchema = {
 const List = mongoose.model('List', listSchema);
 
 app.get("/", function(req, res) {
+  if (req.isAuthenticated()) {
+    res.redirect('/lists/' + req.user.username);
+  } else {
+    res.redirect('/login');
+  }
+});
 
-  Item.find({}, function(err, foundItems) {
-    if (err) {
-      console.log(err);
+app.route('/register')
+  .get((req, res) => {
+    res.render('register');
+  })
+  .post((req, res) => {
+    User.register({
+      username: req.body.username
+    }, req.body.password, (err, user) => {
+      if (err) {
+        console.log(err);
+        res.redirect('/register');
+      } else {
+        passport.authenticate('local')(req, res, () => {
+          const list = new List({
+            name: user.username,
+            items: defaultItems
+          });
+          list.save();
+          res.redirect('/lists/' + user.username);
+        });
+      }
+    });
+  });
+
+app.route('/login')
+  .get((req, res) => {
+    res.render('login');
+  })
+  .post((req, res) => {
+    const user = new User({
+      username: req.body.username,
+      password: req.body.password
+    });
+    req.login(user, (err) => {
+      if (err) {
+        console.log(err);
+      } else {
+        passport.authenticate('local')(req, res, () => {
+          res.redirect('/lists/' + user.username);
+        });
+      }
+    });
+  });
+
+app.route('/lists/:urlUserName')
+  .get((req, res) => {
+    const urlUserName = req.params.urlUserName;
+    if (!req.isAuthenticated()) {
+      res.redirect('/login');
     } else {
-
-      if(foundItems.length === 0) {
-        Item.insertMany(defaultItems, function(err) {
-          if (err) {
-            console.log(err);
-          } else {
-            console.log('Success!');
+      const logedUserName = req.user.username;
+      if (logedUserName === urlUserName) {
+        List.findOne({
+          name: urlUserName
+        }, function(err, foundList) {
+          if (!err) {
+              //Show an existing list
+              res.render('list', {
+                listTitle: foundList.name,
+                newListItems: foundList.items
+              });
           }
         });
-        res.redirect('/');
       } else {
-        res.render('list', {
-          listTitle: 'Today',
-          newListItems: foundItems
-        });
+        res.redirect('/lists/' + logedUserName);
       }
     }
-  });
-
-});
-
-app.get('/:customListName', function(req, res) {
-  const customListName = _.capitalize(req.params.customListName);
-  List.findOne({name: customListName}, function (err, foundList) {
-    if (!err) {
-      if (!foundList) {
-        // Create a new list
-        const list = new List({
-          name: customListName,
-          items: defaultItems
-        });
-        list.save();
-        res.redirect('/' + customListName);
-      } else {
-        //Show an existing list
-        res.render('list', {
-          listTitle: foundList.name,
-          newListItems: foundList.items
-        });
-      }
-    }
-  });
-
-});
-
-app.post('/', (req, res) => {
-
-    const itemName = req.body.newItem;
-    const listName = req.body.list;
-    const item = new Item({
-      name: itemName
-    });
-
-    if(listName === 'Today') {
-      item.save();
-      res.redirect('/');
+  })
+  .post((req, res) => {
+    const urlUserName = req.params.urlUserName;
+    if (!req.isAuthenticated()) {
+      res.redirect('/login');
     } else {
-      List.findOne({name: listName}, function (err, foundList) {
-        foundList.items.push(item);
-        foundList.save();
-        res.redirect('/' + listName);
-      });
+      const logedUserName = req.user.username;
+      if (logedUserName === urlUserName) {
+        const itemName = req.body.newItem;
+        const listName = req.body.list;
+        const item = new Item({
+          name: itemName
+        });
+        List.findOne({
+          name: listName
+        }, function(err, foundList) {
+          foundList.items.push(item);
+          foundList.save();
+          res.redirect('/lists/' + listName);
+        });
+
+      } else {
+        res.redirect('/lists/' + logedUserName);
+      }
     }
-
-
-});
+  });
 
 app.post('/delete', function(req, res) {
   const checkedItemId = req.body.checkbox;
   const listName = req.body.listName;
 
-  if (listName === 'Today') {
-    Item.findByIdAndRemove(checkedItemId, function(err){
-      if (err) {
-        console.log(err);
-      } else {
-        res.redirect('/');
+  List.findOneAndUpdate({
+    name: listName
+  }, {
+    $pull: {
+      items: {
+        _id: checkedItemId
       }
-    });
-  } else {
-    List.findOneAndUpdate({name: listName}, {$pull: {items: {_id: checkedItemId}}}, function(err, foundList) {
-      if (!err) {
-        res.redirect('/' + listName);
-      }
-    });
-  }
+    }
+  }, function(err, foundList) {
+    if (!err) {
+      res.redirect('/lists/' + listName);
+    }
+  });
 
 });
 
+app.get('/logout', (req, res) => {
+  req.logout();
+  res.redirect('/');
+});
 
 app.get('/about', (req, res) => {
   res.render('about');

@@ -1,2 +1,2 @@
 # express-todolist
-To Do List with MongoDB and Express.js
+Simple To Do List built with Express, Passport, Express-Session, Mongoose
