@@ -1,22 +1,54 @@
 <%- include('partials/header') -%>
-<div>
+<div class="row justify-content-center">
+  <div class="col-md-6 col-md-offset-3 jumbotron text-center">
   <h1>Hi, <%= listTitle %>!</h1>
   <h2>Here some work To Do:</h2>
 </div>
+</div>
+
+
+
+
 <div>
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+  <div class="list-group">
   <% newListItems.forEach((item) => { %>
-  <form action="/delete" method="post">
-    <div>
-      <input type="checkbox" name="checkbox" value="<%= item._id %>" onChange="this.form.submit()">
-      <p><%= item.name %></p>
+  <form action="/delete" method="post" class="list-group-item list-group-item-action">
+    <div class="form-check">
+        <input type="checkbox" name="checkbox" value="<%= item._id %>" class="form-check-input" id="checkbox" onChange="this.form.submit()">
+        <label class="form-check-label" for="checkbox"><%= item.name %></label>
     </div>
     <input type="hidden" name="listName" value="<%= listTitle %>"></input>
   </form>
   <% }); %>
-  <form method="post">
-    <input type="text" name="newItem" placeholder="New Item" autocomplete="off">
-    <button type="submit" name="list" value='<%= listTitle %>'>+</button>
+  </div>
+  </div>
+  </div>
+
+  <div class="row row-content justify-content-center">
+    <div class="col-md-6 col-md-offset-3">
+  <form class="form-inline justify-content-center" method="post">
+    <div class="form-group mx-md-3 mb-2">
+      <label for="item" class="sr-only">Add</label>
+      <input type="text" class="form-control" id="item" name="newItem" placeholder="New Item" autocomplete="off">
+    </div>
+    <button type="submit" name="list" value='<%= listTitle %>' class="btn btn-primary mb-2">+</button>
   </form>
-  <a href='/logout'><button type='button'>Logout</button></a>
+
 </div>
+</div>
+
+  <div class="row justify-content-center">
+    <div class="col-md-6 col-md-offset-3 text-center">
+<a href='/logout'><button type='button' class="btn btn-primary">Logout</button></a>
+  </div>
+  </div>
+
+
+
+
+</div>
+
+
 <%- include('partials/footer') -%>
